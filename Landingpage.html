@@ -1,0 +1,511 @@
+<!DOCTYPE html>
+<html lang="de">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>AiBATROS Modul-Workflow</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Montserrat:wght@400;600;700;800&display=swap" rel="stylesheet">
+<style>
+  :root {
+    --dark-blue: #051163;
+    --bright-green: #D5FC93;
+    --soft-blue: #7BBEE0;
+    --sand: #F7F3F0;
+    --white: #FFFFFF;
+    --shadow-sm: 0 1px 4px rgba(5,17,99,.08);
+    --shadow-md: 0 4px 20px rgba(5,17,99,.12);
+    --shadow-lg: 0 8px 40px rgba(5,17,99,.16);
+    --radius-sm: 6px;
+    --radius-md: 10px;
+    --radius-lg: 16px;
+  }
+
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+
+  html, body {
+    height: 100%;
+    overflow: hidden; /* Onepager: eine Seite, kein Scrollen */
+  }
+
+  body {
+    font-family: 'Montserrat', sans-serif;
+    font-size: 14px;
+    line-height: 1.65;
+    color: var(--white);
+    background: var(--dark-blue);
+  }
+
+  /* ---------- Diagonales Linienmotiv (dezent, langsam driftend) ---------- */
+  .diag {
+    position: fixed;
+    opacity: .06;
+    pointer-events: none;
+    z-index: 0;
+  }
+  .diag--tr { top: -90px; right: -70px; animation: drift 24s ease-in-out infinite alternate; }
+  .diag--bl { bottom: -90px; left: -70px; animation: drift 28s ease-in-out infinite alternate-reverse; }
+  @keyframes drift {
+    from { transform: translate(0, 0); }
+    to   { transform: translate(-18px, 14px); }
+  }
+
+  /* ---------- Seitenlayout: Header + Workflow + Fusszeile, exakt ein Viewport ---------- */
+  .page {
+    position: relative;
+    z-index: 1;
+    height: 100%;
+    display: flex;
+    flex-direction: column;
+    padding: clamp(24px, 4vh, 48px) clamp(28px, 3.5vw, 60px) clamp(18px, 3vh, 36px);
+    gap: clamp(14px, 2.5vh, 28px);
+  }
+
+  /* ---------- Header ---------- */
+  .header {
+    display: flex;
+    align-items: flex-start;
+    justify-content: space-between;
+    gap: 24px;
+    opacity: 0;
+    animation: rise .7s cubic-bezier(.4,0,.2,1) .1s forwards;
+  }
+  .pill--header {
+    font-size: 13px;
+    padding: 11px 20px;
+    white-space: nowrap;
+    margin-top: 6px;
+  }
+  .header__title {
+    font-size: clamp(36px, 4.8vw, 60px);
+    font-weight: 800;
+    line-height: 1.2;
+    color: var(--white);
+    max-width: 940px;
+  }
+  .header__title-underline {
+    display: block;
+    width: 84px;
+    height: 4px;
+    margin-top: 12px;
+    margin-bottom: 12px;
+    background: var(--bright-green);
+    border-radius: 2px;
+    transform-origin: left center;
+    transform: scaleX(0);
+    animation: reveal .8s cubic-bezier(.4,0,.2,1) .7s forwards;
+  }
+  .header__subtitle {
+    font-size: clamp(19px, 2.1vw, 28px);
+    font-weight: 600;
+    color: rgba(255,255,255,.7);
+    max-width: 940px;
+  }
+
+  @keyframes rise {
+    from { opacity: 0; transform: translateY(14px); }
+    to   { opacity: 1; transform: none; }
+  }
+  @keyframes reveal {
+    from { transform: scaleX(0); }
+    to   { transform: scaleX(1); }
+  }
+
+  /* ---------- Workflow ---------- */
+  .flow-wrap {
+    flex: 1;
+    display: flex;
+    align-items: center;
+    min-height: 0;
+  }
+  .flow {
+    width: 100%;
+    display: flex;
+    align-items: stretch;
+  }
+
+  /* ---------- Schritt-Karte ---------- */
+  .step {
+    position: relative;
+    flex: 1;
+    min-width: 0;
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+    background: var(--white);
+    color: var(--dark-blue);
+    border-radius: var(--radius-lg);
+    box-shadow: var(--shadow-md);
+    padding: clamp(20px, 3.2vh, 32px) clamp(18px, 1.6vw, 30px);
+    min-height: clamp(300px, 52vh, 460px);
+    overflow: hidden;
+    opacity: 0;
+    animation: rise .65s cubic-bezier(.4,0,.2,1) forwards;
+    transition: transform .25s cubic-bezier(.4,0,.2,1), box-shadow .25s cubic-bezier(.4,0,.2,1);
+  }
+  /* Gestaffelter Einzug entlang des Workflows: 01, 02, 03, 04
+     (nth-of-type zaehlt nur section-Elemente, Verbinder-divs zaehlen nicht mit) */
+  .step:nth-of-type(1) { animation-delay: .30s; }
+  .step:nth-of-type(2) { animation-delay: .60s; }
+  .step:nth-of-type(3) { animation-delay: .90s; }
+  .step:nth-of-type(4) { animation-delay: 1.20s; }
+
+  .step:hover {
+    transform: translateY(-5px);
+    box-shadow: var(--shadow-lg);
+  }
+
+  /* Dezente gruene Kante, die beim Hover einfaehrt */
+  .step::after {
+    content: '';
+    position: absolute;
+    left: 0; top: 0; bottom: 0;
+    width: 4px;
+    background: var(--bright-green);
+    transform: scaleY(0);
+    transform-origin: top;
+    transition: transform .3s cubic-bezier(.4,0,.2,1);
+  }
+  .step:hover::after { transform: scaleY(1); }
+
+  .step__head {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    width: 100%;
+  }
+  .step__icon {
+    flex: 0 0 54px;
+    width: 54px; height: 54px;
+    background: var(--dark-blue);
+    border-radius: var(--radius-md);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    transition: transform .25s cubic-bezier(.4,0,.2,1);
+  }
+  .step:hover .step__icon { transform: scale(1.07); }
+  .step__icon svg {
+    width: 30px; height: 30px;
+    stroke: var(--bright-green);
+    stroke-width: 2;
+    stroke-linecap: round;
+    stroke-linejoin: round;
+    fill: none;
+  }
+  .step__num {
+    margin-left: auto;
+    font-size: clamp(28px, 2.6vw, 40px);
+    font-weight: 800;
+    letter-spacing: 1px;
+    line-height: 1;
+    color: rgba(5,17,99,.22);
+    font-variant-numeric: tabular-nums;
+  }
+
+  .step__title {
+    font-size: clamp(17px, 1.6vw, 22px);
+    font-weight: 700;
+    line-height: 1.25;
+    margin-top: 6px;
+  }
+  .step__tagline {
+    font-size: clamp(12.5px, 1.05vw, 14px);
+    font-weight: 600;
+    color: var(--dark-blue);
+    line-height: 1.5;
+  }
+  .step__text {
+    font-size: clamp(12px, .95vw, 13.5px);
+    color: #4b5563;
+    line-height: 1.65;
+  }
+
+  /* ---------- CTA-Pills ---------- */
+  .step__cta {
+    margin-top: auto;
+    padding-top: 12px;
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: 8px;
+  }
+  .pill {
+    display: inline-flex;
+    align-items: center;
+    gap: 7px;
+    background: var(--bright-green);
+    color: var(--dark-blue);
+    text-decoration: none;
+    font-size: 12px;
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: 1px;
+    padding: 9px 16px;
+    border-radius: 999px;
+    transition: transform .25s cubic-bezier(.4,0,.2,1), box-shadow .25s cubic-bezier(.4,0,.2,1);
+  }
+  .pill:hover {
+    transform: translateX(3px);
+    box-shadow: var(--shadow-sm);
+  }
+  .pill--outline {
+    background: transparent;
+    border: 1.5px solid rgba(5,17,99,.35);
+  }
+  .pill--outline:hover { border-color: var(--dark-blue); }
+  .pill__arrow {
+    font-size: 13px;
+    line-height: 1;
+    transition: transform .25s cubic-bezier(.4,0,.2,1);
+  }
+  .pill:hover .pill__arrow { transform: translate(2px, -2px); }
+
+  .step__paths-label {
+    width: 100%;
+    font-size: 10px;
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: 1.5px;
+    color: #9ca3af;
+  }
+
+  /* ---------- Pfeil-Verbinder: deutlich sichtbar, mit fliessender Bewegung ---------- */
+  .connector {
+    flex: 0 0 clamp(34px, 4vw, 72px);
+    align-self: center;
+    position: relative;
+    height: 4px;
+    background: rgba(213,252,147,.3);
+    border-radius: 2px;
+    transform: scaleX(0);
+    transform-origin: left center;
+    animation: reveal .45s cubic-bezier(.4,0,.2,1) forwards;
+  }
+  /* Fliessende Strichbewegung in Prozessrichtung */
+  .connector::before {
+    content: '';
+    position: absolute;
+    inset: 0;
+    border-radius: 2px;
+    background: repeating-linear-gradient(90deg,
+      var(--bright-green) 0 9px,
+      transparent 9px 18px);
+    animation: flowdash 1.1s linear infinite;
+  }
+  @keyframes flowdash {
+    from { background-position: 0 0; }
+    to   { background-position: 18px 0; }
+  }
+  /* Pfeilspitze */
+  .connector::after {
+    content: '';
+    position: absolute;
+    right: -2px;
+    top: 50%;
+    width: 13px; height: 13px;
+    border-top: 4px solid var(--bright-green);
+    border-right: 4px solid var(--bright-green);
+    border-radius: 1px;
+    transform: translateY(-50%) rotate(45deg);
+  }
+  /* Verbinder erscheinen jeweils nach ihrer linken Karte
+     (nth-of-type zaehlt nur div-Elemente, Karten-sections zaehlen nicht mit) */
+  .connector:nth-of-type(1) { animation-delay: .55s; }
+  .connector:nth-of-type(2) { animation-delay: .85s; }
+  .connector:nth-of-type(3) { animation-delay: 1.15s; }
+
+  /* ---------- Fusszeile ---------- */
+  .footer__hint {
+    display: block;
+    margin-top: 6px;
+    font-size: 11px;
+    font-weight: 600;
+    letter-spacing: .5px;
+    text-transform: none;
+    color: rgba(255,255,255,.35);
+  }
+  .footer {
+    text-align: center;
+    font-size: clamp(15px, 1.5vw, 20px);
+    font-weight: 700;
+    letter-spacing: 1.5px;
+    text-transform: uppercase;
+    color: rgba(255,255,255,.75);
+    opacity: 0;
+    animation: rise .7s cubic-bezier(.4,0,.2,1) 1.5s forwards;
+  }
+
+  /* ---------- Responsive (Notfall: kleinere Fenster) ---------- */
+  @media (max-width: 1000px) {
+    html, body { overflow: auto; }
+    .page { height: auto; min-height: 100%; }
+    .flow { flex-direction: column; align-items: stretch; }
+    .step { min-height: 0; }
+    .connector {
+      flex: none;
+      align-self: center;
+      width: 4px;
+      height: 32px;
+      transform-origin: top center;
+      animation-name: reveal-v;
+    }
+    .connector::before {
+      background: repeating-linear-gradient(180deg,
+        var(--bright-green) 0 9px,
+        transparent 9px 18px);
+      animation-name: flowdash-v;
+    }
+    @keyframes flowdash-v {
+      from { background-position: 0 0; }
+      to   { background-position: 0 18px; }
+    }
+    .connector::after {
+      right: auto;
+      left: 50%;
+      top: auto;
+      bottom: -2px;
+      transform: translateX(-50%) rotate(135deg);
+    }
+    @keyframes reveal-v {
+      from { transform: scaleY(0); }
+      to   { transform: scaleY(1); }
+    }
+  }
+</style>
+</head>
+<body>
+
+<!-- Diagonales Linienmotiv -->
+<svg class="diag diag--tr" width="460" height="460" viewBox="0 0 460 460" xmlns="http://www.w3.org/2000/svg">
+  <g stroke="#D5FC93" stroke-width="2" transform="rotate(50 230 230)">
+    <line x1="0" y1="60" x2="460" y2="60"/>
+    <line x1="0" y1="105" x2="460" y2="105"/>
+    <line x1="0" y1="150" x2="460" y2="150"/>
+    <line x1="0" y1="195" x2="460" y2="195"/>
+    <line x1="0" y1="240" x2="460" y2="240"/>
+    <line x1="0" y1="285" x2="460" y2="285"/>
+    <line x1="0" y1="330" x2="460" y2="330"/>
+    <line x1="0" y1="375" x2="460" y2="375"/>
+  </g>
+</svg>
+<svg class="diag diag--bl" width="460" height="460" viewBox="0 0 460 460" xmlns="http://www.w3.org/2000/svg">
+  <g stroke="#D5FC93" stroke-width="2" transform="rotate(50 230 230)">
+    <line x1="0" y1="60" x2="460" y2="60"/>
+    <line x1="0" y1="105" x2="460" y2="105"/>
+    <line x1="0" y1="150" x2="460" y2="150"/>
+    <line x1="0" y1="195" x2="460" y2="195"/>
+    <line x1="0" y1="240" x2="460" y2="240"/>
+    <line x1="0" y1="285" x2="460" y2="285"/>
+    <line x1="0" y1="330" x2="460" y2="330"/>
+    <line x1="0" y1="375" x2="460" y2="375"/>
+  </g>
+</svg>
+
+<div class="page">
+
+  <!-- ===== Header ===== -->
+  <header class="header">
+    <div>
+      <h1 class="header__title">Vom Bauteil zum Budget<span class="header__title-underline"></span></h1>
+      <p class="header__subtitle">Der durchgängige Prozess in AiBATROS</p>
+    </div>
+    <a class="pill pill--header" href="https://boberwallneraareon-tech.github.io/AiBATROS_DMY/Energieausweis.html">Energieausweise <span class="pill__arrow">↗</span></a>
+  </header>
+
+  <!-- ===== Workflow: Links (href="#") bitte selbst eintragen. Immer selber Tab, NIEMALS target="_blank" ===== -->
+  <main class="flow-wrap">
+    <div class="flow">
+
+      <!-- Schritt 01: Datenerhebung (zwei Bausteine, beide noetig) -->
+      <section class="step">
+        <span class="step__head">
+          <span class="step__icon">
+            <!-- Piktogramm: Klemmbrett mit Checkliste (Erfassung vor Ort) -->
+            <svg viewBox="0 0 24 24"><rect x="5" y="4" width="14" height="17" rx="2"/><path d="M9 2h6v4H9z"/><path d="m8.5 11.5 1.5 1.5 3-3M8.5 17h7"/></svg>
+          </span>
+          <span class="step__num">01</span>
+        </span>
+        <span class="step__title">Datenerhebung</span>
+        <span class="step__tagline">Hier entsteht die Datenqualität, auf der alles andere aufbaut.</span>
+        <span class="step__text">Bestandsdaten werden zentral verwaltet, Gebäude wie auch Grundstücke. Der Zustand der Bauelemente wird mit dem EPIQR-Verfahren systematisch bewertet, mobil und offline per InputApp und in der Webapplikation. Jede Bewertung wird automatisch plausibilisiert.</span>
+        <span class="step__cta">
+          <a class="pill" href="https://boberwallneraareon-tech.github.io/AiBATROS_DMY/Datamanagement.html">Datenmanagement <span class="pill__arrow">↗</span></a>
+          <a class="pill" href="https://boberwallneraareon-tech.github.io/AiBATROS_DMY/ElementsSurvey.html">Bauelementbewertung <span class="pill__arrow">↗</span></a>
+        </span>
+      </section>
+
+      <div class="connector"></div>
+
+      <!-- Schritt 02: Objektanalyse (zwei Wege: Top-Down / Bottom-Up) -->
+      <section class="step">
+        <span class="step__head">
+          <span class="step__icon">
+            <!-- Piktogramm: Lupe mit Kennzahlen-Balken (Analyse des Bestands) -->
+            <svg viewBox="0 0 24 24"><circle cx="10.5" cy="10.5" r="7"/><path d="m21 21-5.2-5.2"/><path d="M7.5 13.5v-2.5M10.5 13.5V7.5M13.5 13.5v-4"/></svg>
+          </span>
+          <span class="step__num">02</span>
+        </span>
+        <span class="step__title">Objektanalyse</span>
+        <span class="step__tagline">Aus dem Datenbestand wird eine Entscheidungslandkarte.</span>
+        <span class="step__text">Die Bewertungsdaten aller Objekte verdichten sich zu einem ganzheitlichen Bild des Bestands. Beide Wege zeigen, wo Handlungsbedarf entsteht und wo jeder investierte Euro die größte Wirkung erzielt.</span>
+        <span class="step__cta">
+          <span class="step__paths-label">Zwei Wege</span>
+          <a class="pill" href="https://boberwallneraareon-tech.github.io/AiBATROS_DMY/PortfolioManagementObjectAnalysis.html">Top-Down <span class="pill__arrow">↗</span></a>
+          <a class="pill" href="https://boberwallneraareon-tech.github.io/AiBATROS_DMY/AnnualMeasurePlansCompareObjects.html">Bottom-Up <span class="pill__arrow">↗</span></a>
+        </span>
+      </section>
+
+      <div class="connector"></div>
+
+      <!-- Schritt 03: Massnahmenplanung (Investrechnung optional dazu) -->
+      <section class="step">
+        <span class="step__head">
+          <span class="step__icon">
+            <!-- Piktogramm: Kalender mit Haken (terminierte Massnahmen) -->
+            <svg viewBox="0 0 24 24"><rect x="4" y="5" width="16" height="16" rx="2"/><path d="M8 3v4M16 3v4M4 11h16"/><path d="m9 16.5 2 2 4-4.5"/></svg>
+          </span>
+          <span class="step__num">03</span>
+        </span>
+        <span class="step__title">Maßnahmenplanung</span>
+        <span class="step__tagline">Welche Maßnahmen sich wirklich rechnen.</span>
+        <span class="step__text">Der erkannte Bedarf wird in konkrete, terminierte Maßnahmenpakete überführt, bis auf die Bauteilebene. Die optionale Investrechnung belegt die Wirtschaftlichkeit, für energiebezogene Maßnahmen auch DIN-konform nach DIN EN 17463 - VALERI.</span>
+        <span class="step__cta">
+          <a class="pill" href="https://boberwallneraareon-tech.github.io/AiBATROS_DMY/AnnualMeasurePlansEditPlanning.html">Maßnahmenplanung <span class="pill__arrow">↗</span></a>
+          <a class="pill pill--outline" href="https://boberwallneraareon-tech.github.io/AiBATROS_DMY/EriList.html">Investrechnung (optional) <span class="pill__arrow">↗</span></a>
+        </span>
+      </section>
+
+      <div class="connector"></div>
+
+      <!-- Schritt 04: Budgetplanung -->
+      <section class="step">
+        <span class="step__head">
+          <span class="step__icon">
+            <!-- Piktogramm: Euro im Kreis (Budget und Kosten) -->
+            <svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="9"/><path d="M15.8 8.6A4.4 4.4 0 0 0 8.6 12a4.4 4.4 0 0 0 7.2 3.4M7 10.6h5M7 13.4h4.4"/></svg>
+          </span>
+          <span class="step__num">04</span>
+        </span>
+        <span class="step__title">Budgetplanung</span>
+        <span class="step__tagline">Zur richtigen Zeit eingesetzt, ohne Budgetgrenzen zu sprengen.</span>
+        <span class="step__text">Maßnahmenpakete werden auf Budgetperioden verteilt, mit Budgetgrenzen, Kostenarten und konsolidierter Sicht über den Bestand. Der Effekt der Maßnahmen wird im Graphen sichtbar.</span>
+        <span class="step__cta">
+          <a class="pill" href="https://boberwallneraareon-tech.github.io/AiBATROS_DMY/Budgetplan.html">Zum Modul <span class="pill__arrow">↗</span></a>
+        </span>
+      </section>
+
+    </div>
+  </main>
+
+  <!-- ===== Fusszeile ===== -->
+  <footer class="footer">
+    Vier Schritte, ein durchgängiger Entscheidungsprozess
+    <span class="footer__hint">Alt + Linke Pfeiltaste für zurück</span>
+  </footer>
+
+</div>
+
+</body>
+</html>
